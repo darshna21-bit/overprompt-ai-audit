@@ -1,6 +1,10 @@
+import Navbar from "@/components/Navbar";
 export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white">
+      
+      <Navbar />
+
       <section className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
         
         <div className="mb-6 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-sm text-gray-300 backdrop-blur">
