@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { pricingData } from "@/data/pricing";
 import { generateAudit } from "@/lib/audit-engine";
 
@@ -13,21 +13,48 @@ export default function AuditForm() {
 
   const [auditResult, setAuditResult] = useState<any>(null);
 
+  // Load saved form data
+  useEffect(() => {
+    const savedData = localStorage.getItem("audit-form");
+
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+
+      setTool(parsedData.tool || "");
+      setPlan(parsedData.plan || "");
+      setMonthlySpend(parsedData.monthlySpend || "");
+      setSeats(parsedData.seats || "");
+      setUseCase(parsedData.useCase || "");
+    }
+  }, []);
+
+  // Persist form data
+  useEffect(() => {
+    localStorage.setItem(
+      "audit-form",
+      JSON.stringify({
+        tool,
+        plan,
+        monthlySpend,
+        seats,
+        useCase,
+      })
+    );
+  }, [tool, plan, monthlySpend, seats, useCase]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("FORM SUBMITTED");
-
     const result = generateAudit({
-        tool,
-        plan,
-        monthlySpend: Number(monthlySpend),
-        seats: Number(seats),
-        useCase,
+      tool,
+      plan,
+      monthlySpend: Number(monthlySpend),
+      seats: Number(seats),
+      useCase,
     });
 
     setAuditResult(result);
-    };
+  };
 
   return (
     <section className="border-t border-white/10 bg-black px-6 py-24 text-white">
@@ -55,45 +82,45 @@ export default function AuditForm() {
             </label>
 
             <select
-                value={tool}
-                onChange={(e) => setTool(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
-                >
-                <option value="">Select Tool</option>
+              value={tool}
+              onChange={(e) => setTool(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+            >
+              <option value="">Select Tool</option>
 
-                {Object.keys(pricingData).map((toolName) => (
-                    <option key={toolName} value={toolName}>
-                    {toolName}
-                    </option>
-                ))}
+              {Object.keys(pricingData).map((toolName) => (
+                <option key={toolName} value={toolName}>
+                  {toolName}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
             <label className="mb-2 block text-sm text-gray-300">
-                Current Plan
+              Current Plan
             </label>
 
             <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+              value={plan}
+              onChange={(e) => setPlan(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
             >
-                <option value="">Select Plan</option>
+              <option value="">Select Plan</option>
 
-                {tool &&
+              {tool &&
                 pricingData[tool as keyof typeof pricingData]?.plans.map(
-                    (planOption) => (
+                  (planOption) => (
                     <option
-                        key={planOption.name}
-                        value={planOption.name}
+                      key={planOption.name}
+                      value={planOption.name}
                     >
-                        {planOption.name} (${planOption.price}/mo)
+                      {planOption.name} (${planOption.price}/mo)
                     </option>
-                    )
+                  )
                 )}
             </select>
-            </div>
+          </div>
 
           <div className="grid gap-6 md:grid-cols-2">
 
@@ -154,59 +181,61 @@ export default function AuditForm() {
           </button>
 
         </form>
+
         {auditResult && (
-        <div className="mt-8 rounded-3xl border border-green-500/20 bg-green-500/5 p-8">
+          <div className="mt-8 rounded-3xl border border-green-500/20 bg-green-500/5 p-8">
 
             <div className="mb-6">
-            <h3 className="text-3xl font-bold text-white">
+              <h3 className="text-3xl font-bold text-white">
                 Potential Savings Found
-            </h3>
+              </h3>
 
-            <p className="mt-2 text-gray-400">
+              <p className="mt-2 text-gray-400">
                 Here’s your AI spend optimization summary.
-            </p>
+              </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
 
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
                 <p className="text-sm text-gray-400">
-                Monthly Savings
+                  Monthly Savings
                 </p>
 
                 <h4 className="mt-2 text-4xl font-bold text-green-400">
-                ${auditResult.monthlySavings}
+                  ${auditResult.monthlySavings}
                 </h4>
-            </div>
+              </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
                 <p className="text-sm text-gray-400">
-                Annual Savings
+                  Annual Savings
                 </p>
 
                 <h4 className="mt-2 text-4xl font-bold text-green-400">
-                ${auditResult.annualSavings}
+                  ${auditResult.annualSavings}
                 </h4>
-            </div>
+              </div>
 
             </div>
 
             <div className="mt-8 rounded-2xl border border-white/10 bg-black/40 p-6">
-            <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-400">
                 Recommendation
-            </p>
+              </p>
 
-            <h4 className="mt-3 text-2xl font-semibold text-white">
+              <h4 className="mt-3 text-2xl font-semibold text-white">
                 {auditResult.recommendation}
-            </h4>
+              </h4>
 
-            <p className="mt-4 leading-7 text-gray-400">
+              <p className="mt-4 leading-7 text-gray-400">
                 {auditResult.reason}
-            </p>
+              </p>
             </div>
 
-        </div>
+          </div>
         )}
+
       </div>
     </section>
   );
