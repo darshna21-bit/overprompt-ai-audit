@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { pricingData } from "@/data/pricing";
 
 export default function AuditForm() {
   const [tool, setTool] = useState("");
@@ -51,28 +52,40 @@ export default function AuditForm() {
               onChange={(e) => setTool(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
             >
-              <option value="">Select Tool</option>
-              <option>ChatGPT</option>
-              <option>Claude</option>
-              <option>Cursor</option>
-              <option>Gemini</option>
-              <option>GitHub Copilot</option>
+                {Object.keys(pricingData).map((toolName) => (
+                <option key={toolName} value={toolName}>
+                    {toolName}
+                </option>
+                ))}
+              
             </select>
           </div>
 
           <div>
             <label className="mb-2 block text-sm text-gray-300">
-              Current Plan
+                Current Plan
             </label>
 
-            <input
-              type="text"
-              placeholder="e.g. Team, Pro, Enterprise"
-              value={plan}
-              onChange={(e) => setPlan(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
-            />
-          </div>
+            <select
+                value={plan}
+                onChange={(e) => setPlan(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+            >
+                <option value="">Select Plan</option>
+
+                {tool &&
+                pricingData[tool as keyof typeof pricingData]?.plans.map(
+                    (planOption) => (
+                    <option
+                        key={planOption.name}
+                        value={planOption.name}
+                    >
+                        {planOption.name} (${planOption.price}/mo)
+                    </option>
+                    )
+                )}
+            </select>
+            </div>
 
           <div className="grid gap-6 md:grid-cols-2">
 
