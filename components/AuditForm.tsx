@@ -12,6 +12,7 @@ export default function AuditForm() {
   const [useCase, setUseCase] = useState("");
 
   const [auditResult, setAuditResult] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load saved form data
   useEffect(() => {
@@ -42,19 +43,27 @@ export default function AuditForm() {
     );
   }, [tool, plan, monthlySpend, seats, useCase]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setIsLoading(true);
+
+    await new Promise((resolve) =>
+        setTimeout(resolve, 2000)
+    );
+
     const result = generateAudit({
-      tool,
-      plan,
-      monthlySpend: Number(monthlySpend),
-      seats: Number(seats),
-      useCase,
+        tool,
+        plan,
+        monthlySpend: Number(monthlySpend),
+        seats: Number(seats),
+        useCase,
     });
 
     setAuditResult(result);
-  };
+
+    setIsLoading(false);
+    };
 
   return (
     <section className="border-t border-white/10 bg-black px-6 py-24 text-white">
@@ -175,9 +184,12 @@ export default function AuditForm() {
 
           <button
             type="submit"
-            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-black transition hover:opacity-90"
-          >
-            Generate Audit
+            disabled={isLoading}
+            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+            {isLoading
+                ? "Analyzing AI Stack..."
+                : "Generate Audit"}
           </button>
 
         </form>
@@ -231,6 +243,39 @@ export default function AuditForm() {
               <p className="mt-4 leading-7 text-gray-400">
                 {auditResult.reason}
               </p>
+              <div className="mt-8 grid gap-4 md:grid-cols-3">
+
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-sm text-gray-400">
+                    Confidence
+                    </p>
+
+                    <h5 className="mt-2 text-2xl font-semibold text-white">
+                    {auditResult.confidence}%
+                    </h5>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-sm text-gray-400">
+                    Optimization Category
+                    </p>
+
+                    <h5 className="mt-2 text-lg font-semibold text-white">
+                    {auditResult.category}
+                    </h5>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-sm text-gray-400">
+                    Estimated Impact
+                    </p>
+
+                    <h5 className="mt-2 text-lg font-semibold text-white">
+                    {auditResult.impact}
+                    </h5>
+                </div>
+
+                </div>
             </div>
 
           </div>
