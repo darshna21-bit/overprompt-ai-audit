@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import FeaturesSection from "@/components/FeaturesSection";
 import SupportedTools from "@/components/SupportedTools";
+import AuditForm from "@/components/AuditForm";
 
 export default function Home() {
   return (
@@ -10,6 +11,7 @@ export default function Home() {
       <HeroSection />
       <FeaturesSection />
       <SupportedTools />
+      <AuditForm />
     </main>
   );
 }
