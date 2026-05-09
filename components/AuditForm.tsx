@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { pricingData } from "@/data/pricing";
 import { generateAudit } from "@/lib/audit-engine";
+import AnalyticsCards from "./AnalyticsCards";
+import SpendChart from "./SpendChart";
 
 export default function AuditForm() {
   const [tool, setTool] = useState("");
@@ -277,6 +279,14 @@ export default function AuditForm() {
 
                 </div>
             </div>
+            <AnalyticsCards
+              monthlySavings={auditResult.monthlySavings}
+              annualSavings={auditResult.annualSavings}
+            />
+            <SpendChart
+              monthlySpend={Number(monthlySpend)}
+              monthlySavings={auditResult.monthlySavings}
+            />
 
           </div>
         )}
