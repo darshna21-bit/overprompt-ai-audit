@@ -26,7 +26,8 @@ export default function AuditForm() {
 
   const [isLoading, setIsLoading] =
     useState(false);
-
+  const [aiSummary, setAiSummary] =
+    useState("");
   // LOAD SAVED FORM DATA
 
   useEffect(() => {
@@ -115,7 +116,49 @@ export default function AuditForm() {
     });
 
     setAuditResult(result);
+    try {
 
+  const response = await fetch(
+    "/api/generate-summary",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        tool,
+        plan,
+        monthlySpend,
+        seats,
+        useCase,
+
+        recommendation:
+          result.recommendation,
+
+        annualSavings:
+          result.annualSavings,
+      }),
+    }
+  );
+
+  const data =
+    await response.json();
+
+  setAiSummary(
+    data.summary
+  );
+
+} catch (error) {
+
+  console.error(error);
+
+  setAiSummary(
+    "AI-generated insights are currently unavailable."
+  );
+}
     // SAVE AUDIT HISTORY
 
     const existingAudits = JSON.parse(
@@ -452,6 +495,19 @@ export default function AuditForm() {
                     <p className="mt-4 leading-7 text-gray-400">
                       {auditResult.reason}
                     </p>
+                    <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-5">
+
+  <p className="text-sm text-gray-400">
+    AI-generated Summary
+  </p>
+
+  <p className="mt-3 leading-7 text-gray-300">
+    {aiSummary
+  ?.replace(/\*\*/g, "")
+  || "Generating AI insights..."}
+  </p>
+
+</div>
 
                     {/* INSIGHT CARDS */}
 
