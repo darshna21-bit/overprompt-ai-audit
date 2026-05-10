@@ -1,4 +1,4 @@
-type AuditInput = {
+export type AuditInput = {
   tool: string;
   plan: string;
   monthlySpend: number;
@@ -6,7 +6,7 @@ type AuditInput = {
   useCase: string;
 };
 
-type AuditResult = {
+export type AuditResult = {
   recommendation: string;
   monthlySavings: number;
   annualSavings: number;
@@ -31,6 +31,54 @@ export function generateAudit(
   } = input;
 
   // -------------------------
+  // HIGH SPEND RULE
+  // -------------------------
+
+  if (
+    monthlySpend >= 1000
+  ) {
+    return {
+      recommendation:
+        "Explore negotiated enterprise AI pricing",
+
+      monthlySavings: 250,
+      annualSavings: 3000,
+
+      reason:
+        "Organizations with high recurring AI spend often qualify for vendor discounts and infrastructure credits.",
+
+      confidence: 90,
+      category: "Procurement Optimization",
+      risk: "Medium",
+      impact: "High",
+    };
+  }
+
+  // -------------------------
+  // LARGE TEAM RULE
+  // -------------------------
+
+  if (
+    seats >= 50
+  ) {
+    return {
+      recommendation:
+        "Negotiate custom enterprise contracts",
+
+      monthlySavings: 500,
+      annualSavings: 6000,
+
+      reason:
+        "Larger organizations frequently unlock significant savings through long-term procurement agreements.",
+
+      confidence: 95,
+      category: "Enterprise Procurement",
+      risk: "Low",
+      impact: "Very High",
+    };
+  }
+
+  // -------------------------
   // CHATGPT
   // -------------------------
 
@@ -45,11 +93,8 @@ export function generateAudit(
       recommendation:
         "Switch to ChatGPT Plus",
 
-      monthlySavings:
-        monthlySpend > 400 ? 10 : 20,
-
-      annualSavings:
-        monthlySpend > 400 ? 120 : 240,
+      monthlySavings: 20,
+      annualSavings: 240,
 
       reason:
         "Small teams often overpay for ChatGPT Team when individual Plus subscriptions provide similar value.",
@@ -72,11 +117,8 @@ export function generateAudit(
       recommendation:
         "Downgrade to ChatGPT Team",
 
-      monthlySavings:
-        monthlySpend > 500 ? 50 : 150,
-
-      annualSavings:
-        monthlySpend > 500 ? 600 : 1800,
+      monthlySavings: 150,
+      annualSavings: 1800,
 
       reason:
         "Enterprise pricing is usually unnecessary for smaller organizations with limited operational scale.",
@@ -147,11 +189,8 @@ export function generateAudit(
       recommendation:
         "Downgrade to Claude Team",
 
-      monthlySavings:
-        monthlySpend > 700 ? 40 : 120,
-
-      annualSavings:
-        monthlySpend > 700 ? 480 : 1440,
+      monthlySavings: 120,
+      annualSavings: 1440,
 
       reason:
         "Enterprise-level Claude plans are generally unnecessary for smaller teams.",
@@ -201,11 +240,8 @@ export function generateAudit(
       recommendation:
         "Downgrade to Cursor Pro",
 
-      monthlySavings:
-        monthlySpend > 400 ? 15 : 40,
-
-      annualSavings:
-        monthlySpend > 400 ? 180 : 480,
+      monthlySavings: 40,
+      annualSavings: 480,
 
       reason:
         "Cursor Business plans are generally optimized for larger engineering teams.",
@@ -228,11 +264,8 @@ export function generateAudit(
       recommendation:
         "Switch to Cursor Business",
 
-      monthlySavings:
-        monthlySpend > 1000 ? 80 : 200,
-
-      annualSavings:
-        monthlySpend > 1000 ? 960 : 2400,
+      monthlySavings: 200,
+      annualSavings: 2400,
 
       reason:
         "Enterprise tooling costs may not justify the usage scale of smaller development teams.",
@@ -262,11 +295,8 @@ export function generateAudit(
         recommendation:
           "Current GitHub Copilot setup appears efficient",
 
-        monthlySavings:
-          monthlySpend > 600 ? 10 : 25,
-
-        annualSavings:
-          monthlySpend > 600 ? 120 : 300,
+        monthlySavings: 25,
+        annualSavings: 300,
 
         reason:
           "GitHub Copilot Business appears reasonably aligned with your current engineering workflow scale.",
@@ -419,54 +449,6 @@ export function generateAudit(
       category: "Usage Optimization",
       risk: "Low",
       impact: "Medium",
-    };
-  }
-
-  // -------------------------
-  // HIGH SPEND RULE
-  // -------------------------
-
-  if (
-    monthlySpend >= 1000
-  ) {
-    return {
-      recommendation:
-        "Explore negotiated enterprise AI pricing",
-
-      monthlySavings: 250,
-      annualSavings: 3000,
-
-      reason:
-        "Organizations with high recurring AI spend often qualify for vendor discounts and infrastructure credits.",
-
-      confidence: 90,
-      category: "Procurement Optimization",
-      risk: "Medium",
-      impact: "High",
-    };
-  }
-
-  // -------------------------
-  // LARGE TEAM RULE
-  // -------------------------
-
-  if (
-    seats >= 50
-  ) {
-    return {
-      recommendation:
-        "Negotiate custom enterprise contracts",
-
-      monthlySavings: 500,
-      annualSavings: 6000,
-
-      reason:
-        "Larger organizations frequently unlock significant savings through long-term procurement agreements.",
-
-      confidence: 95,
-      category: "Enterprise Procurement",
-      risk: "Low",
-      impact: "Very High",
     };
   }
 

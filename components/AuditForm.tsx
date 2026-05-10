@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { pricingData } from "@/data/pricing";
-import { generateAudit } from "@/lib/audit-engine";
+
+
+import {
+  generateAudit,
+  type AuditResult,
+} from "@/lib/audit-engine";
 
 import AnalyticsCards from "./AnalyticsCards";
 import SpendChart from "./SpendChart";
-import AuditHistory from "./AuditHistory";
+import LeadCaptureForm from "./LeadCaptureForm";
 
 export default function AuditForm() {
 
@@ -17,15 +22,12 @@ export default function AuditForm() {
   const [useCase, setUseCase] = useState("");
 
   const [auditResult, setAuditResult] =
-    useState<any>(null);
-
-  const [auditHistory, setAuditHistory] =
-    useState<any[]>([]);
+    useState<AuditResult | null>(null);
 
   const [isLoading, setIsLoading] =
     useState(false);
 
-  // LOAD SAVED DATA
+  // LOAD SAVED FORM DATA
 
   useEffect(() => {
 
@@ -44,17 +46,6 @@ export default function AuditForm() {
       );
       setSeats(parsedData.seats || "");
       setUseCase(parsedData.useCase || "");
-    }
-
-    // LOAD HISTORY
-
-    const savedHistory =
-      localStorage.getItem("audit-history");
-
-    if (savedHistory) {
-      setAuditHistory(
-        JSON.parse(savedHistory)
-      );
     }
 
   }, []);
@@ -91,6 +82,19 @@ export default function AuditForm() {
 
     e.preventDefault();
 
+    // VALIDATION
+
+    if (
+      !tool ||
+      !plan ||
+      !monthlySpend ||
+      !seats ||
+      !useCase
+    ) {
+      alert("Please fill all fields");
+      return;
+    }
+
     setIsLoading(true);
 
     await new Promise((resolve) =>
@@ -100,6 +104,7 @@ export default function AuditForm() {
     const result = generateAudit({
       tool,
       plan,
+
       monthlySpend:
         Number(monthlySpend),
 
@@ -111,7 +116,11 @@ export default function AuditForm() {
 
     setAuditResult(result);
 
-    // SAVE HISTORY
+    // SAVE AUDIT HISTORY
+
+    const existingAudits = JSON.parse(
+      localStorage.getItem("audit-history") || "[]"
+    );
 
     const newAudit = {
       tool,
@@ -124,16 +133,15 @@ export default function AuditForm() {
         result.recommendation,
     };
 
-    const updatedHistory = [
-      newAudit,
-      ...auditHistory,
-    ].slice(0, 5);
-
-    setAuditHistory(updatedHistory);
-
     localStorage.setItem(
       "audit-history",
-      JSON.stringify(updatedHistory)
+
+      JSON.stringify(
+        [
+          newAudit,
+          ...existingAudits,
+        ].slice(0, 10)
+      )
     );
 
     setIsLoading(false);
@@ -141,368 +149,414 @@ export default function AuditForm() {
 
   return (
 
-    <section className="border-t border-white/10 bg-black px-6 py-24 text-white">
+    <section
+      id="audit-dashboard"
+      className="border-t border-white/10 bg-black px-6 py-24 text-white"
+    >
 
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-7xl">
 
         {/* HEADER */}
 
-        <div className="mb-12 text-center">
+        <div className="mb-14 text-center">
 
-          <h2 className="text-4xl font-bold tracking-tight">
+          <h2 className="text-5xl font-bold tracking-tight">
             Run Your AI Spend Audit
           </h2>
 
-          <p className="mt-4 text-lg text-gray-400">
-            Enter your AI tooling details and discover where
-            your startup can save money.
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
+            Analyze your AI tooling stack, identify waste,
+            and discover optimization opportunities for your
+            engineering and operations teams.
           </p>
 
         </div>
 
-        {/* FORM */}
+        {/* DASHBOARD GRID */}
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur"
-        >
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr] items-start">
 
-          {/* TOOL */}
+          {/* LEFT SIDE — FORM */}
 
-          <div>
+          <div className="lg:sticky lg:top-24">
 
-            <label className="mb-2 block text-sm text-gray-300">
-              AI Tool
-            </label>
-
-            <select
-              value={tool}
-              onChange={(e) =>
-                setTool(e.target.value)
-              }
-
-              className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur"
             >
 
-              <option value="">
-                Select Tool
-              </option>
+              {/* TOOL */}
 
-              {Object.keys(pricingData).map(
-                (toolName) => (
+              <div>
 
-                  <option
-                    key={toolName}
-                    value={toolName}
-                  >
-                    {toolName}
+                <label className="mb-2 block text-sm text-gray-300">
+                  AI Tool
+                </label>
+
+                <select
+                  value={tool}
+
+                  onChange={(e) =>
+                    setTool(e.target.value)
+                  }
+
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                >
+
+                  <option value="">
+                    Select Tool
                   </option>
-                )
-              )}
 
-            </select>
+                  {Object.keys(pricingData).map(
+                    (toolName) => (
+
+                      <option
+                        key={toolName}
+                        value={toolName}
+                      >
+                        {toolName}
+                      </option>
+                    )
+                  )}
+
+                </select>
+
+              </div>
+
+              {/* PLAN */}
+
+              <div>
+
+                <label className="mb-2 block text-sm text-gray-300">
+                  Current Plan
+                </label>
+
+                <select
+                  value={plan}
+
+                  onChange={(e) =>
+                    setPlan(e.target.value)
+                  }
+
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                >
+
+                  <option value="">
+                    Select Plan
+                  </option>
+
+                  {tool &&
+                    pricingData[
+                      tool as keyof typeof pricingData
+                    ]?.plans.map(
+                      (planOption) => (
+
+                        <option
+                          key={planOption.name}
+                          value={planOption.name}
+                        >
+                          {planOption.name}
+                          {" "}
+                          (${planOption.price}/mo)
+                        </option>
+                      )
+                    )}
+
+                </select>
+
+              </div>
+
+              {/* INPUTS */}
+
+              <div className="grid gap-6 md:grid-cols-2">
+
+                <div>
+
+                  <label className="mb-2 block text-sm text-gray-300">
+                    Monthly Spend ($)
+                  </label>
+
+                  <input
+                    type="number"
+                    placeholder="300"
+
+                    value={monthlySpend}
+
+                    onChange={(e) =>
+                      setMonthlySpend(
+                        e.target.value
+                      )
+                    }
+
+                    className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                  />
+
+                </div>
+
+                <div>
+
+                  <label className="mb-2 block text-sm text-gray-300">
+                    Number of Seats
+                  </label>
+
+                  <input
+                    type="number"
+                    placeholder="5"
+
+                    value={seats}
+
+                    onChange={(e) =>
+                      setSeats(e.target.value)
+                    }
+
+                    className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                  />
+
+                </div>
+
+              </div>
+
+              {/* USE CASE */}
+
+              <div>
+
+                <label className="mb-2 block text-sm text-gray-300">
+                  Primary Use Case
+                </label>
+
+                <select
+                  value={useCase}
+
+                  onChange={(e) =>
+                    setUseCase(
+                      e.target.value
+                    )
+                  }
+
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
+                >
+
+                  <option value="">
+                    Select Use Case
+                  </option>
+
+                  <option>
+                    Coding
+                  </option>
+
+                  <option>
+                    Writing
+                  </option>
+
+                  <option>
+                    Research
+                  </option>
+
+                  <option>
+                    Data Analysis
+                  </option>
+
+                  <option>
+                    Mixed
+                  </option>
+
+                </select>
+
+              </div>
+
+              {/* BUTTON */}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+
+                className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+
+                {isLoading
+                  ? "Analyzing AI Stack..."
+                  : "Generate Audit"}
+
+              </button>
+
+            </form>
 
           </div>
 
-          {/* PLAN */}
+          {/* RIGHT SIDE — RESULTS */}
 
           <div>
 
-            <label className="mb-2 block text-sm text-gray-300">
-              Current Plan
-            </label>
+            {auditResult ? (
 
-            <select
-              value={plan}
-              onChange={(e) =>
-                setPlan(e.target.value)
-              }
+              <div className="space-y-8">
 
-              className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
-            >
+                {/* MAIN RESULT */}
 
-              <option value="">
-                Select Plan
-              </option>
+                <div className="rounded-3xl border border-green-500/20 bg-green-500/5 p-8">
 
-              {tool &&
-                pricingData[
-                  tool as keyof typeof pricingData
-                ]?.plans.map(
-                  (planOption) => (
+                  <div className="mb-6">
 
-                    <option
-                      key={planOption.name}
-                      value={planOption.name}
-                    >
-                      {planOption.name}
-                      {" "}
-                      (${planOption.price}/mo)
-                    </option>
-                  )
-                )}
+                    <h3 className="text-3xl font-bold text-white">
+                      Potential Savings Found
+                    </h3>
 
-            </select>
+                    <p className="mt-2 text-gray-400">
+                      Here’s your AI spend optimization summary.
+                    </p>
 
-          </div>
+                  </div>
 
-          {/* INPUTS */}
+                  {/* SAVINGS */}
 
-          <div className="grid gap-6 md:grid-cols-2">
+                  <div className="grid gap-6 md:grid-cols-2">
 
-            <div>
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
 
-              <label className="mb-2 block text-sm text-gray-300">
-                Monthly Spend ($)
-              </label>
+                      <p className="text-sm text-gray-400">
+                        Monthly Savings
+                      </p>
 
-              <input
-                type="number"
-                placeholder="300"
+                      <h4 className="mt-2 text-4xl font-bold text-green-400">
+                        ${auditResult.monthlySavings}
+                      </h4>
 
-                value={monthlySpend}
+                    </div>
 
-                onChange={(e) =>
-                  setMonthlySpend(
-                    e.target.value
-                  )
-                }
+                    <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
 
-                className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
-              />
+                      <p className="text-sm text-gray-400">
+                        Annual Savings
+                      </p>
 
-            </div>
+                      <h4 className="mt-2 text-4xl font-bold text-green-400">
+                        ${auditResult.annualSavings}
+                      </h4>
 
-            <div>
+                    </div>
 
-              <label className="mb-2 block text-sm text-gray-300">
-                Number of Seats
-              </label>
+                  </div>
 
-              <input
-                type="number"
-                placeholder="5"
+                  {/* RECOMMENDATION */}
 
-                value={seats}
+                  <div className="mt-8 rounded-2xl border border-white/10 bg-black/40 p-6">
 
-                onChange={(e) =>
-                  setSeats(e.target.value)
-                }
+                    <p className="text-sm text-gray-400">
+                      Recommendation
+                    </p>
 
-                className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
-              />
+                    <h4 className="mt-3 text-2xl font-semibold text-white">
+                      {auditResult.recommendation}
+                    </h4>
 
-            </div>
+                    <p className="mt-4 leading-7 text-gray-400">
+                      {auditResult.reason}
+                    </p>
 
-          </div>
+                    {/* INSIGHT CARDS */}
 
-          {/* USE CASE */}
+                    <div className="mt-8 grid gap-4 md:grid-cols-3">
 
-          <div>
+                      <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
 
-            <label className="mb-2 block text-sm text-gray-300">
-              Primary Use Case
-            </label>
+                        <p className="text-sm text-gray-400">
+                          Confidence
+                        </p>
 
-            <select
-              value={useCase}
+                        <h5 className="mt-2 text-2xl font-semibold text-white">
+                          {auditResult.confidence}%
+                        </h5>
 
-              onChange={(e) =>
-                setUseCase(
-                  e.target.value
-                )
-              }
+                      </div>
 
-              className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-white outline-none"
-            >
+                      <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
 
-              <option value="">
-                Select Use Case
-              </option>
+                        <p className="text-sm text-gray-400">
+                          Optimization Category
+                        </p>
 
-              <option>
-                Coding
-              </option>
+                        <h5 className="mt-2 text-lg font-semibold text-white">
+                          {auditResult.category}
+                        </h5>
 
-              <option>
-                Writing
-              </option>
+                      </div>
 
-              <option>
-                Research
-              </option>
+                      <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
 
-              <option>
-                Data Analysis
-              </option>
+                        <p className="text-sm text-gray-400">
+                          Estimated Impact
+                        </p>
 
-              <option>
-                Mixed
-              </option>
+                        <h5 className="mt-2 text-lg font-semibold text-white">
+                          {auditResult.impact}
+                        </h5>
 
-            </select>
+                      </div>
 
-          </div>
+                    </div>
 
-          {/* BUTTON */}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-
-            className="w-full rounded-2xl bg-white px-6 py-4 font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-
-            {isLoading
-              ? "Analyzing AI Stack..."
-              : "Generate Audit"}
-
-          </button>
-
-        </form>
-
-        {/* RESULTS */}
-
-        {auditResult && (
-
-          <div className="mt-8 rounded-3xl border border-green-500/20 bg-green-500/5 p-8">
-
-            {/* TITLE */}
-
-            <div className="mb-6">
-
-              <h3 className="text-3xl font-bold text-white">
-                Potential Savings Found
-              </h3>
-
-              <p className="mt-2 text-gray-400">
-                Here’s your AI spend optimization summary.
-              </p>
-
-            </div>
-
-            {/* SAVINGS */}
-
-            <div className="grid gap-6 md:grid-cols-2">
-
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
-
-                <p className="text-sm text-gray-400">
-                  Monthly Savings
-                </p>
-
-                <h4 className="mt-2 text-4xl font-bold text-green-400">
-                  ${auditResult.monthlySavings}
-                </h4>
-
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-6">
-
-                <p className="text-sm text-gray-400">
-                  Annual Savings
-                </p>
-
-                <h4 className="mt-2 text-4xl font-bold text-green-400">
-                  ${auditResult.annualSavings}
-                </h4>
-
-              </div>
-
-            </div>
-
-            {/* RECOMMENDATION */}
-
-            <div className="mt-8 rounded-2xl border border-white/10 bg-black/40 p-6">
-
-              <p className="text-sm text-gray-400">
-                Recommendation
-              </p>
-
-              <h4 className="mt-3 text-2xl font-semibold text-white">
-                {auditResult.recommendation}
-              </h4>
-
-              <p className="mt-4 leading-7 text-gray-400">
-                {auditResult.reason}
-              </p>
-
-              {/* INSIGHT CARDS */}
-
-              <div className="mt-8 grid gap-4 md:grid-cols-3">
-
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-
-                  <p className="text-sm text-gray-400">
-                    Confidence
-                  </p>
-
-                  <h5 className="mt-2 text-2xl font-semibold text-white">
-                    {auditResult.confidence}%
-                  </h5>
+                  </div>
 
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                {/* ANALYTICS */}
 
-                  <p className="text-sm text-gray-400">
-                    Optimization Category
+                <AnalyticsCards
+                  monthlySavings={
+                    auditResult.monthlySavings
+                  }
+
+                  annualSavings={
+                    auditResult.annualSavings
+                  }
+                />
+
+                {/* CHART */}
+
+                <SpendChart
+                  monthlySpend={
+                    Number(monthlySpend)
+                  }
+
+                  monthlySavings={
+                    auditResult.monthlySavings
+                  }
+                />
+                <LeadCaptureForm
+                  tool={tool}
+                  plan={plan}
+                  annualSavings={
+                    auditResult.annualSavings
+                  }
+                />
+
+              </div>
+
+            ) : (
+
+              <div className="flex min-h-[600px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-12">
+
+                <div className="text-center">
+
+                  <h3 className="text-2xl font-semibold text-white">
+                    AI Optimization Dashboard
+                  </h3>
+
+                  <p className="mt-4 max-w-md text-gray-400">
+                    Run an audit to generate AI spend insights,
+                    optimization recommendations, analytics,
+                    and operational efficiency reports.
                   </p>
-
-                  <h5 className="mt-2 text-lg font-semibold text-white">
-                    {auditResult.category}
-                  </h5>
-
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-
-                  <p className="text-sm text-gray-400">
-                    Estimated Impact
-                  </p>
-
-                  <h5 className="mt-2 text-lg font-semibold text-white">
-                    {auditResult.impact}
-                  </h5>
 
                 </div>
 
               </div>
 
-            </div>
-
-            {/* ANALYTICS */}
-
-            <AnalyticsCards
-              monthlySavings={
-                auditResult.monthlySavings
-              }
-
-              annualSavings={
-                auditResult.annualSavings
-              }
-            />
-
-            {/* CHART */}
-
-            <SpendChart
-              monthlySpend={
-                Number(monthlySpend)
-              }
-
-              monthlySavings={
-                auditResult.monthlySavings
-              }
-            />
-
-            {/* HISTORY */}
-
-            <AuditHistory
-              audits={auditHistory}
-            />
+            )}
 
           </div>
-        )}
+
+        </div>
 
       </div>
 

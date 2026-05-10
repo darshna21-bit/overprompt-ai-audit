@@ -10,7 +10,6 @@ export default function Home() {
       <Navbar />
       <HeroSection />
       <FeaturesSection />
-      <SupportedTools />
       <AuditForm />
     </main>
   );

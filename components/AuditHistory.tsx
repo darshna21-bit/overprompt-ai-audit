@@ -18,7 +18,10 @@ export default function AuditHistory({
   }
 
   return (
-    <section className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+    <section
+        id="audit-history"
+        className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur"
+        >
 
       <div className="mb-6">
         <h3 className="text-2xl font-semibold text-white">
