@@ -19,12 +19,6 @@ export default function Navbar() {
 
         <div className="flex items-center gap-3">
 
-          <Link
-            href="/audit-history"
-            className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-          >
-            History
-          </Link>
 
           <Link
             href="#audit-dashboard"
