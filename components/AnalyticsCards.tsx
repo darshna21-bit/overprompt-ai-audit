@@ -1,77 +1,77 @@
 type Props = {
+  monthlySpend: number;
   monthlySavings: number;
   annualSavings: number;
 };
 
 export default function AnalyticsCards({
+  monthlySpend,
   monthlySavings,
   annualSavings,
 }: Props) {
-
-  const efficiencyScore =
-    Math.max(
-      100 - monthlySavings / 5,
-      65
-    );
+  const savingsRate =
+    monthlySpend > 0
+      ? Math.round((monthlySavings / monthlySpend) * 100)
+      : 0;
 
   const optimizationLevel =
-    monthlySavings > 100
-      ? "High"
-      : monthlySavings > 30
-      ? "Medium"
-      : "Low";
+    savingsRate > 25 ? "High" : savingsRate > 10 ? "Medium" : "Low";
 
-  const roi =
-    annualSavings * 3;
+  const optimizationColor =
+    savingsRate > 25
+      ? "text-green-400"
+      : savingsRate > 10
+      ? "text-yellow-400"
+      : "text-gray-400";
+
+  // Payback framing: how many months of savings cover one month's full spend
+  // (i.e. how quickly does the optimized cost "pay back" vs staying put)
+  const paybackMonths =
+    monthlySavings > 0
+      ? Math.ceil(monthlySpend / monthlySavings)
+      : null;
 
   return (
     <section className="mt-10 grid gap-4 md:grid-cols-3">
 
-      {/* SCORE */}
-
+      {/* SAVINGS RATE */}
       <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-        <p className="text-sm text-gray-400">
-          AI Efficiency Score
-        </p>
-
+        <p className="text-sm text-gray-400">Savings Rate</p>
         <h3 className="mt-3 text-4xl font-bold text-white">
-          {Math.round(efficiencyScore)}/100
+          {savingsRate}%
         </h3>
-
         <p className="mt-2 text-sm text-gray-500">
-          Estimated operational efficiency based on current AI tooling configuration.
+          {savingsRate > 0
+            ? `${savingsRate}% of your current $${monthlySpend}/mo spend can be eliminated.`
+            : "Your current spend is already well-optimized."}
         </p>
       </div>
 
-      {/* OPTIMIZATION */}
-
+      {/* OPTIMIZATION LEVEL */}
       <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-        <p className="text-sm text-gray-400">
-          Optimization Potential
-        </p>
-
-        <h3 className="mt-3 text-4xl font-bold text-white">
+        <p className="text-sm text-gray-400">Optimization Potential</p>
+        <h3 className={`mt-3 text-4xl font-bold ${optimizationColor}`}>
           {optimizationLevel}
         </h3>
-
         <p className="mt-2 text-sm text-gray-500">
-          Estimated opportunity for AI spend and workflow optimization.
+          {optimizationLevel === "High"
+            ? "Significant plan misalignment detected. Action recommended."
+            : optimizationLevel === "Medium"
+            ? "Moderate savings opportunity. Worth reviewing your plan tier."
+            : "Your tooling appears appropriately matched to your usage."}
         </p>
       </div>
 
-      {/* ROI */}
-
+      {/* ANNUAL SAVINGS OR PAYBACK */}
       <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-        <p className="text-sm text-gray-400">
-          Estimated ROI Impact
-        </p>
-
+        <p className="text-sm text-gray-400">Annual Savings</p>
         <h3 className="mt-3 text-4xl font-bold text-white">
-          ${roi}
+          ${annualSavings.toLocaleString()}
         </h3>
-
         <p className="mt-2 text-sm text-gray-500">
-          Estimated annual business efficiency impact from AI tooling improvements.
+          {paybackMonths !== null
+            ? `At $${monthlySavings}/mo saved, your annual saving equals ${paybackMonths} month${paybackMonths !== 1 ? "s" : ""} of current spend.`
+            : "No immediate savings identified for this tool and plan combination."}
         </p>
       </div>
 

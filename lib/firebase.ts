@@ -1,15 +1,20 @@
-import { initializeApp } from "firebase/app";
+// lib/firebase.ts
+// IMPORTANT: Add all these to .env.local — never commit actual values.
+// See .env.example for the variable names.
+
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC7keXj4HGSPU9XdtMmnFgEVXH5tta4jKs",
-  authDomain: "overprompt-audit.firebaseapp.com",
-  projectId: "overprompt-audit",
-  storageBucket: "overprompt-audit.firebasestorage.app",
-  messagingSenderId: "836293389427",
-  appId: "1:836293389427:web:728db80cce1b341f69ce06",
+  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// Singleton — prevents "Firebase app already initialized" error on Next.js hot reload
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const db = getFirestore(app);
