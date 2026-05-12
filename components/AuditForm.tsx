@@ -406,6 +406,7 @@ export default function AuditForm() {
                   plan={rows.map((r) => r.plan).join(", ")}
                   monthlySavings={report.totalMonthlySavings}
                   annualSavings={report.totalAnnualSavings}
+                  auditId={auditId}
                 />
 
               </div>

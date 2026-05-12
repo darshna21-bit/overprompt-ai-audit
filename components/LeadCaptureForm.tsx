@@ -9,6 +9,7 @@ type Props = {
   plan: string;
   monthlySavings: number;
   annualSavings: number;
+   auditId: string;
 };
 
 export default function LeadCaptureForm({
