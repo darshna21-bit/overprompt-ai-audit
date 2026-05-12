@@ -35,6 +35,7 @@ export default function LeadCaptureForm({
 
     setError("");
 
+    // Honeypot protection
     if (honeypot) return;
 
     if (!email) {
@@ -75,6 +76,7 @@ export default function LeadCaptureForm({
         source: "audit-form",
       };
 
+      // SAVE TO AUDITS COLLECTION
       const docRef = await addDoc(
         collection(db, "audits"),
         auditData
@@ -82,6 +84,7 @@ export default function LeadCaptureForm({
 
       const auditId = docRef.id;
 
+      // SEND EMAIL
       await fetch("/api/send-confirmation", {
 
         method: "POST",
@@ -181,6 +184,7 @@ export default function LeadCaptureForm({
         className="space-y-4"
       >
 
+        {/* Honeypot */}
         <input
           type="text"
           name="website"
