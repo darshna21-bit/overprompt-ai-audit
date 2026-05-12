@@ -136,7 +136,7 @@ export default function AuditForm() {
           </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr] items-start">
+        <div className="grid gap-8 items-start lg:grid-cols-[380px_minmax(0,1fr)]">
 
           {/* LEFT — Form */}
           <div className="lg:sticky lg:top-24">
@@ -245,7 +245,7 @@ export default function AuditForm() {
           </div>
 
           {/* RIGHT — Results */}
-          <div>
+            <div className="min-w-0">
             {report ? (
               <div className="space-y-8">
 
@@ -297,7 +297,7 @@ export default function AuditForm() {
                     <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                       <p className="text-sm text-gray-400 mb-3">Share this audit</p>
                       <div className="flex items-center gap-3">
-                        <code className="flex-1 truncate rounded-xl bg-black px-4 py-2.5 text-sm text-green-400">
+                        <code className="flex-1 break-all rounded-xl bg-black px-4 py-2.5 text-sm text-green-400">
                           {`${window.location.origin}/audit/${auditId}`}
                         </code>
                         <button
