@@ -28,10 +28,30 @@ export default function AuditForm() {
 
   // Persist form state across reloads
   useEffect(() => {
-    const saved = localStorage.getItem("audit-rows");
-    if (saved) {
-      try { setRows(JSON.parse(saved)); } catch {}
-    }
+
+    const loadRows = async () => {
+
+      const saved =
+        localStorage.getItem("audit-rows");
+
+      if (saved) {
+
+        try {
+
+          setTimeout(() => {
+
+            setRows(JSON.parse(saved));
+
+          }, 0);
+
+        } catch {}
+
+      }
+
+    };
+
+    loadRows();
+
   }, []);
 
   useEffect(() => {
@@ -132,7 +152,7 @@ export default function AuditForm() {
           <h2 className="text-5xl font-bold tracking-tight">Run Your AI Spend Audit</h2>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-gray-400">
             Add every AI tool your team pays for. Get an instant breakdown of where
-            you're overspending and exactly what to do about it.
+            you&apos;re overspending and exactly what to do about it.
           </p>
         </div>
 
@@ -275,7 +295,7 @@ export default function AuditForm() {
                   {report.showCredexUpsell && (
                     <div className="mt-6 rounded-2xl border border-green-400/30 bg-green-400/10 p-5">
                       <p className="font-semibold text-green-300 text-lg">
-                        💡 You're leaving ${report.totalMonthlySavings.toLocaleString()}/mo on the table
+                        💡 you&apos;re leaving ${report.totalMonthlySavings.toLocaleString()}/mo on the table
                       </p>
                       <p className="mt-2 text-sm text-gray-300">
                         Credex sources discounted AI infrastructure credits from companies that overforecast usage.

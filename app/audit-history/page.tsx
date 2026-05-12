@@ -2,22 +2,41 @@
 
 import { useEffect, useState } from "react";
 import AuditHistory from "@/components/AuditHistory";
+import Link from "next/link";
+
+type AuditHistoryItem = {
+  rows: unknown[];
+  totalMonthlySavings: number;
+  date: string;
+};
 
 export default function AuditHistoryPage() {
 
   const [audits, setAudits] =
-    useState<any[]>([]);
+    useState<AuditHistoryItem[]>([]);
 
   useEffect(() => {
 
-    const savedAudits =
-      localStorage.getItem("audit-history");
+    const loadAudits = async () => {
 
-    if (savedAudits) {
-      setAudits(
-        JSON.parse(savedAudits)
-      );
-    }
+      const savedAudits =
+        localStorage.getItem("audit-history");
+
+      if (savedAudits) {
+
+        setTimeout(() => {
+
+          setAudits(
+            JSON.parse(savedAudits)
+          );
+
+        }, 0);
+
+      }
+
+    };
+
+    loadAudits();
 
   }, []);
 
@@ -57,12 +76,12 @@ export default function AuditHistoryPage() {
               tracking optimization insights.
             </p>
 
-            <a
+            <Link
               href="/#audit-dashboard"
               className="mt-8 inline-block rounded-2xl bg-white px-6 py-3 font-medium text-black transition hover:opacity-90"
             >
               Run First Audit
-            </a>
+            </Link>
 
           </div>
 

@@ -1,12 +1,11 @@
-type Audit = {
-  tool: string;
-  plan: string;
-  annualSavings: number;
-  recommendation: string;
+type AuditHistoryItem = {
+  rows: unknown[];
+  totalMonthlySavings: number;
+  date: string;
 };
 
 type Props = {
-  audits: Audit[];
+  audits: AuditHistoryItem[];
 };
 
 export default function AuditHistory({
@@ -19,9 +18,9 @@ export default function AuditHistory({
 
   return (
     <section
-        id="audit-history"
-        className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur"
-        >
+      id="audit-history"
+      className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur"
+    >
 
       <div className="mb-6">
         <h3 className="text-2xl font-semibold text-white">
@@ -45,21 +44,25 @@ export default function AuditHistory({
 
               <div>
                 <h4 className="text-lg font-semibold text-white">
-                  {audit.tool} — {audit.plan}
+                  Audit #{index + 1}
                 </h4>
 
                 <p className="mt-1 text-sm text-gray-400">
-                  {audit.recommendation}
+                  {audit.rows.length} tool(s) analyzed
+                </p>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  {audit.date}
                 </p>
               </div>
 
               <div className="text-right">
                 <p className="text-sm text-gray-400">
-                  Annual Savings
+                  Monthly Savings
                 </p>
 
                 <h4 className="text-2xl font-bold text-green-400">
-                  ${audit.annualSavings}
+                  ${audit.totalMonthlySavings}
                 </h4>
               </div>
 
