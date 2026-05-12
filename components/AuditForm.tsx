@@ -6,7 +6,7 @@ import { generateAuditReport, type AuditInput, type AuditReport } from "@/lib/au
 import AnalyticsCards from "./AnalyticsCards";
 import SpendChart from "./SpendChart";
 import LeadCaptureForm from "./LeadCaptureForm";
-import { saveAuditToFirestore } from "@/lib/save.audit";
+import { saveAuditToFirestore } from "@/lib/save.audit"; 
 
 const TOOLS = Object.keys(pricingData);
 const USE_CASES = ["Coding", "Writing", "Research", "Data Analysis", "Mixed"];
@@ -19,7 +19,7 @@ const EMPTY_ROW = (): AuditInput => ({
 });
 
 export default function AuditForm() {
-  const [rows, setRows] = useState<AuditInput[]>([EMPTY_ROW()]);
+  const [rows, setRows]           = useState<AuditInput[]>([EMPTY_ROW()]);
   const [report, setReport]       = useState<AuditReport | null>(null);
   const [aiSummary, setAiSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -28,30 +28,10 @@ export default function AuditForm() {
 
   // Persist form state across reloads
   useEffect(() => {
-
-    const loadRows = async () => {
-
-      const saved =
-        localStorage.getItem("audit-rows");
-
-      if (saved) {
-
-        try {
-
-          setTimeout(() => {
-
-            setRows(JSON.parse(saved));
-
-          }, 0);
-
-        } catch {}
-
-      }
-
-    };
-
-    loadRows();
-
+    const saved = localStorage.getItem("audit-rows");
+    if (saved) {
+      try { setRows(JSON.parse(saved)); } catch {}
+    }
   }, []);
 
   useEffect(() => {
@@ -97,7 +77,7 @@ export default function AuditForm() {
     const result = generateAuditReport(rows);
     setReport(result);
 
-    // Save to Firestore → get shareable ID
+    // Save full audit to Firestore → get shareable ID
     try {
       const id = await saveAuditToFirestore(rows, result);
       setAuditId(id);
@@ -105,7 +85,7 @@ export default function AuditForm() {
       console.error("[AuditForm] Failed to save audit:", err);
     }
 
-    // AI summary
+    // AI summary — use highest-spend tool for context
     const primaryRow    = [...rows].sort((a, b) => b.monthlySpend - a.monthlySpend)[0];
     const primaryResult = result.results[0];
 
@@ -295,7 +275,7 @@ export default function AuditForm() {
                   {report.showCredexUpsell && (
                     <div className="mt-6 rounded-2xl border border-green-400/30 bg-green-400/10 p-5">
                       <p className="font-semibold text-green-300 text-lg">
-                        💡 you&apos;re leaving ${report.totalMonthlySavings.toLocaleString()}/mo on the table
+                        💡 You&apos;re leaving ${report.totalMonthlySavings.toLocaleString()}/mo on the table
                       </p>
                       <p className="mt-2 text-sm text-gray-300">
                         Credex sources discounted AI infrastructure credits from companies that overforecast usage.
@@ -312,7 +292,7 @@ export default function AuditForm() {
                     </div>
                   )}
 
-                  {/* ── Share URL block ── appears after Firestore save completes */}
+                  {/* Share URL — appears after Firestore save completes */}
                   {auditId && (
                     <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
                       <p className="text-sm text-gray-400 mb-3">Share this audit</p>
@@ -345,7 +325,7 @@ export default function AuditForm() {
                 </div>
 
                 {/* Per-tool breakdown */}
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-8">
+                <div className="rounded-3xl border border-white/10 bg-white/3 p-8">
                   <h3 className="mb-6 text-xl font-semibold text-white">Per-tool breakdown</h3>
                   <div className="space-y-4">
                     {report.results.map((r, i) => (
@@ -400,18 +380,18 @@ export default function AuditForm() {
                   monthlySavings={report.totalMonthlySavings}
                 />
 
-                {/* Lead capture — auditId passed so email link works */}
+                {/* Lead capture — auditId passed for email link */}
                 <LeadCaptureForm
                   tool={rows.map((r) => r.tool).join(", ")}
                   plan={rows.map((r) => r.plan).join(", ")}
                   monthlySavings={report.totalMonthlySavings}
                   annualSavings={report.totalAnnualSavings}
-                  
+                  auditId={auditId}
                 />
 
               </div>
             ) : (
-              <div className="flex min-h-[600px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.03] p-12">
+              <div className="flex min-h-[600px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/3 p-12">
                 <div className="text-center">
                   <h3 className="text-2xl font-semibold text-white">AI Spend Dashboard</h3>
                   <p className="mt-4 max-w-md text-gray-400">
