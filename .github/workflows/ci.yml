@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
@@ -27,6 +26,9 @@ jobs:
 
       - name: Run ESLint
         run: npm run lint
+
+      - name: Run Tests
+        run: npm test
 
       - name: Run Production Build
         run: npm run build
