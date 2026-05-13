@@ -1,6 +1,11 @@
 // lib/audit-engine.ts
 // Audit logic uses hardcoded rules (correct) — AI is used only for the summary paragraph.
 // Every savings figure = currentSpend - (recommendedPrice * seats), verifiable against PRICING_DATA.md.
+//
+// Price corrections applied May 13, 2026:
+//   - Claude Team: $30 → $25/seat
+//   - Windsurf Pro: $15 → $20/month
+//   - Windsurf Teams: $35 → $40/user
 
 import { pricingData } from "@/data/pricing";
 
@@ -136,7 +141,8 @@ function auditClaude(input: AuditInput): AuditResult {
   const src = getSourceUrl("Claude");
 
   // Team with ≤3 seats — individual Pro is cheaper
-  if (plan === "Team" && seats <= 3) {
+  // Claude Team Standard = $25/seat (corrected from $30 — verified May 13, 2026)
+  if ((plan === "Team" || plan === "Team Standard" || plan === "Team Premium") && seats <= 3) {
     const { monthly, annual, recommendedTotal } = calcSavings(monthlySpend, 20, seats);
     if (monthly > 0) {
       return {
@@ -145,7 +151,7 @@ function auditClaude(input: AuditInput): AuditResult {
         recommendedMonthlyCost: recommendedTotal,
         monthlySavings: monthly, annualSavings: annual,
         recommendation: `Switch each member to Claude Pro — ${seats} × $20/seat = $${recommendedTotal}/mo`,
-        reason: `Claude Team is $30/seat vs Pro at $20/seat. For ${seats} user${seats !== 1 ? "s" : ""} without enterprise admin or SSO requirements, individual Pro subscriptions provide identical model access at $${monthly}/mo less.`,
+        reason: `Claude Team Standard is $25/seat vs Pro at $20/seat. For ${seats} user${seats !== 1 ? "s" : ""} without enterprise admin or SSO requirements, individual Pro subscriptions provide identical model access at $${monthly}/mo less.`,
         confidence: 91, category: "downgrade", risk: "Low",
         impact: monthly > 50 ? "High" : "Medium", sourceUrl: src,
       };
@@ -154,13 +160,13 @@ function auditClaude(input: AuditInput): AuditResult {
 
   // Enterprise with small team
   if (plan === "Enterprise" && seats < 10) {
-    const { monthly, annual, recommendedTotal } = calcSavings(monthlySpend, 30, seats);
+    const { monthly, annual, recommendedTotal } = calcSavings(monthlySpend, 25, seats);
     return {
       tool: "Claude", currentPlan: plan, currentMonthlySpend: monthlySpend,
-      recommendedPlan: "Claude Team",
+      recommendedPlan: "Claude Team Standard",
       recommendedMonthlyCost: recommendedTotal,
       monthlySavings: monthly, annualSavings: annual,
-      recommendation: `Downgrade to Claude Team — ${seats} × $30/seat = $${recommendedTotal}/mo`,
+      recommendation: `Downgrade to Claude Team Standard — ${seats} × $25/seat = $${recommendedTotal}/mo`,
       reason: `Claude Enterprise adds custom retention policies, SAML SSO, and dedicated support — valuable at 50+ seats or in regulated industries. At ${seats} seats, Team provides the same model access including extended context. Estimated saving: $${monthly}/mo ($${annual}/yr).`,
       confidence: 89, category: "downgrade", risk: "Low",
       impact: monthly > 100 ? "High" : "Medium", sourceUrl: src,
@@ -183,7 +189,7 @@ function auditClaude(input: AuditInput): AuditResult {
   }
 
   // Coding use case on subscription — mention API
-  if (useCase === "Coding" && (plan === "Pro" || plan === "Team") && monthlySpend > 40) {
+  if (useCase === "Coding" && (plan === "Pro" || plan === "Team" || plan === "Team Standard") && monthlySpend > 40) {
     return {
       tool: "Claude", currentPlan: plan, currentMonthlySpend: monthlySpend,
       recommendedPlan: plan,
@@ -291,23 +297,8 @@ function auditGitHubCopilot(input: AuditInput): AuditResult {
 }
 
 function auditGemini(input: AuditInput): AuditResult {
-  const { plan, monthlySpend, seats, useCase } = input;
+  const { plan, monthlySpend} = input;
   const src = getSourceUrl("Gemini");
-
-  // Ultra for writing → Pro is sufficient
-  if (plan === "Ultra" && useCase === "Writing") {
-    const { monthly, annual, recommendedTotal } = calcSavings(monthlySpend, 20, seats);
-    return {
-      tool: "Gemini", currentPlan: plan, currentMonthlySpend: monthlySpend,
-      recommendedPlan: "Gemini Pro (Google One AI Premium)",
-      recommendedMonthlyCost: recommendedTotal,
-      monthlySavings: monthly, annualSavings: annual,
-      recommendation: `Downgrade to Gemini Pro — ${seats} × $20/seat = $${recommendedTotal}/mo`,
-      reason: `Gemini Ultra's advantages are in multimodal reasoning and complex analysis tasks. For writing workflows, Gemini Pro (Google One AI Premium, $20/mo) provides equivalent text generation quality. Saving: $${monthly}/mo ($${annual}/yr).`,
-      confidence: 85, category: "downgrade", risk: "Low",
-      impact: "Medium", sourceUrl: src,
-    };
-  }
 
   // API Direct — high spend
   if (plan === "API Direct" && monthlySpend >= 300) {
@@ -324,6 +315,7 @@ function auditGemini(input: AuditInput): AuditResult {
     };
   }
 
+  // Pro (Google One AI Premium) is already the base consumer tier — no downgrade available
   return optimalFallback(input);
 }
 
@@ -346,17 +338,19 @@ function auditWindsurf(input: AuditInput): AuditResult {
     };
   }
 
-  // Team with ≤2 seats → Pro is cheaper
-  if (plan === "Team" && seats <= 2) {
-    const { monthly, annual, recommendedTotal } = calcSavings(monthlySpend, 15, seats);
+  // Teams with ≤2 seats → Pro is cheaper
+  // Windsurf Pro = $20/month (corrected — was $15 before March 2026)
+  // Windsurf Teams = $40/user (corrected — was $30/$35 before March 2026)
+  if ((plan === "Team" || plan === "Teams") && seats <= 2) {
+    const { monthly, annual, recommendedTotal } = calcSavings(monthlySpend, 20, seats);
     if (monthly > 0) {
       return {
         tool: "Windsurf", currentPlan: plan, currentMonthlySpend: monthlySpend,
         recommendedPlan: "Windsurf Pro",
         recommendedMonthlyCost: recommendedTotal,
         monthlySavings: monthly, annualSavings: annual,
-        recommendation: `Downgrade to Windsurf Pro — ${seats} × $15/seat = $${recommendedTotal}/mo`,
-        reason: `Windsurf Team adds admin controls and shared flows. At ${seats} seat${seats !== 1 ? "s" : ""}, individual Pro subscriptions cover the same AI-assisted coding at $${monthly}/mo less.`,
+        recommendation: `Downgrade to Windsurf Pro — ${seats} × $20/seat = $${recommendedTotal}/mo`,
+        reason: `Windsurf Teams ($40/seat) adds admin controls and centralized billing. At ${seats} seat${seats !== 1 ? "s" : ""}, individual Pro subscriptions at $20/seat cover the same AI-assisted coding at $${monthly}/mo less.`,
         confidence: 87, category: "downgrade", risk: "Low",
         impact: "Medium", sourceUrl: src,
       };

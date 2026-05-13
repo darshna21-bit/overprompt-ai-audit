@@ -20,26 +20,40 @@ const EMPTY_ROW = (): AuditInput => ({
 
 export default function AuditForm() {
   // ── Fixed: initialize from localStorage directly — avoids setState-in-effect lint error
-  const [rows, setRows] = useState<AuditInput[]>(() => {
-    if (typeof window === "undefined") return [EMPTY_ROW()];
-    try {
-      const saved = localStorage.getItem("audit-rows");
-      return saved ? JSON.parse(saved) : [EMPTY_ROW()];
-    } catch {
-      return [EMPTY_ROW()];
-    }
-  });
+  const [rows, setRows] = useState<AuditInput[]>([EMPTY_ROW()]);
 
   const [report, setReport]       = useState<AuditReport | null>(null);
   const [aiSummary, setAiSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [auditId, setAuditId]     = useState("");
   const [copied, setCopied]       = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Save rows to localStorage on every change
+    useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const saved = localStorage.getItem("audit-rows");
+
+        if (saved) {
+          setRows(JSON.parse(saved));
+        }
+
+        setMounted(true);
+      } catch {
+        console.error("Failed to load saved audit rows");
+        setMounted(true);
+      }
+    });
+}, []);
+
   useEffect(() => {
+    if (!mounted) return;
+
     localStorage.setItem("audit-rows", JSON.stringify(rows));
-  }, [rows]);
+  }, [rows, mounted]);
+
+  if (!mounted) return null;
 
   const updateRow = (index: number, field: keyof AuditInput, value: string | number) => {
     setRows((prev) => {

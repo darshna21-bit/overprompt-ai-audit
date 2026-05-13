@@ -1,6 +1,9 @@
 // __tests__/audit-engine.test.ts
 // Run with: npm test
 // Covers: generateAudit() and generateAuditReport() in lib/audit-engine.ts
+//
+// NOTE: Claude Team price corrected to $25/seat (was $30) in May 13 recheck.
+// Test 2 assertions updated accordingly.
 
 import { describe, it, expect } from "vitest";
 import { generateAudit, generateAuditReport } from "../lib/audit-engine";
@@ -32,10 +35,31 @@ describe("Cursor Business downgrade to Pro", () => {
 // ── Test 2 ────────────────────────────────────────────────────────────────────
 describe("Claude Team with small seats", () => {
   it("should recommend individual Pro subscriptions when seats <= 3", () => {
+    // Claude Team Standard = $25/seat (verified May 13, 2026 — corrected from $30)
     const result = generateAudit({
       tool: "Claude",
       plan: "Team",
-      monthlySpend: 90, // 3 seats × $30
+      monthlySpend: 75, // 3 seats × $25
+      seats: 3,
+      useCase: "Writing",
+    });
+
+    // Pro at $20/seat × 3 = $60 → savings = $15
+    expect(result.monthlySavings).toBe(15);
+    expect(result.annualSavings).toBe(180);
+    expect(result.category).toBe("downgrade");
+    expect(result.risk).toBe("Low");
+  });
+});
+
+// ── Test 2b — legacy $30 input ────────────────────────────────────────────────
+describe("Claude Team with small seats — user paying old $30/seat rate", () => {
+  it("should still detect savings if user entered $30/seat spend", () => {
+    // Some users may still be on legacy billing at $30/seat
+    const result = generateAudit({
+      tool: "Claude",
+      plan: "Team",
+      monthlySpend: 90, // 3 seats × $30 (legacy)
       seats: 3,
       useCase: "Writing",
     });
@@ -44,7 +68,6 @@ describe("Claude Team with small seats", () => {
     expect(result.monthlySavings).toBe(30);
     expect(result.annualSavings).toBe(360);
     expect(result.category).toBe("downgrade");
-    expect(result.risk).toBe("Low");
   });
 });
 
@@ -97,15 +120,15 @@ describe("generateAuditReport - multi-tool totals", () => {
       {
         tool: "Claude",
         plan: "Team",
-        monthlySpend: 90,
+        monthlySpend: 75, // 3 × $25 current price
         seats: 3,
         useCase: "Writing",
       },
     ]);
 
-    // Cursor saves $60, Claude saves $30 → total $90/mo
-    expect(report.totalMonthlySavings).toBe(90);
-    expect(report.totalAnnualSavings).toBe(1080);
+    // Cursor saves $60, Claude saves $15 → total $75/mo
+    expect(report.totalMonthlySavings).toBe(75);
+    expect(report.totalAnnualSavings).toBe(900);
     expect(report.results).toHaveLength(2);
 
     // showCredexUpsell should be false (savings < $500)
@@ -129,5 +152,24 @@ describe("Credex upsell threshold", () => {
     // Enterprise → Business saves at least $200/mo on 10 seats
     // showCredexUpsell triggers at > $500
     expect(report.showCredexUpsell).toBe(report.totalMonthlySavings > 500);
+  });
+});
+
+// ── Test 7 — Windsurf Teams corrected price ───────────────────────────────────
+describe("Windsurf Teams downgrade to Pro", () => {
+  it("should recommend Pro when seats <= 2 (using corrected $40/seat Teams price)", () => {
+    const result = generateAudit({
+      tool: "Windsurf",
+      plan: "Teams",
+      monthlySpend: 80, // 2 seats × $40 (corrected March 2026 price)
+      seats: 2,
+      useCase: "Coding",
+    });
+
+    // Pro at $20/seat × 2 = $40 → savings = $40
+    expect(result.category).toBe("downgrade");
+    expect(result.monthlySavings).toBe(40);
+    expect(result.annualSavings).toBe(480);
+    expect(result.recommendedPlan).toContain("Pro");
   });
 });
