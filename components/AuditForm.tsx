@@ -6,7 +6,7 @@ import { generateAuditReport, type AuditInput, type AuditReport } from "@/lib/au
 import AnalyticsCards from "./AnalyticsCards";
 import SpendChart from "./SpendChart";
 import LeadCaptureForm from "./LeadCaptureForm";
-import { saveAuditToFirestore } from "@/lib/save.audit"; // ← fixed: dash not dot
+import { saveAuditToFirestore } from "@/lib/save.audit"; 
 
 const TOOLS = Object.keys(pricingData);
 const USE_CASES = ["Coding", "Writing", "Research", "Data Analysis", "Mixed"];
@@ -19,20 +19,24 @@ const EMPTY_ROW = (): AuditInput => ({
 });
 
 export default function AuditForm() {
-  const [rows, setRows]           = useState<AuditInput[]>([EMPTY_ROW()]);
+  // ── Fixed: initialize from localStorage directly — avoids setState-in-effect lint error
+  const [rows, setRows] = useState<AuditInput[]>(() => {
+    if (typeof window === "undefined") return [EMPTY_ROW()];
+    try {
+      const saved = localStorage.getItem("audit-rows");
+      return saved ? JSON.parse(saved) : [EMPTY_ROW()];
+    } catch {
+      return [EMPTY_ROW()];
+    }
+  });
+
   const [report, setReport]       = useState<AuditReport | null>(null);
   const [aiSummary, setAiSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [auditId, setAuditId]     = useState("");
   const [copied, setCopied]       = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("audit-rows");
-    if (saved) {
-      try { setRows(JSON.parse(saved)); } catch {}
-    }
-  }, []);
-
+  // Save rows to localStorage on every change
   useEffect(() => {
     localStorage.setItem("audit-rows", JSON.stringify(rows));
   }, [rows]);
@@ -167,7 +171,6 @@ export default function AuditForm() {
                     )}
                   </div>
 
-                  {/* Tool select */}
                   <select
                     value={row.tool}
                     onChange={(e) => updateRow(i, "tool", e.target.value)}
@@ -179,7 +182,6 @@ export default function AuditForm() {
                     ))}
                   </select>
 
-                  {/* Plan select */}
                   <select
                     value={row.plan}
                     onChange={(e) => updateRow(i, "plan", e.target.value)}
@@ -195,7 +197,6 @@ export default function AuditForm() {
                       ))}
                   </select>
 
-                  {/* Monthly spend + Seats + Use case */}
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="mb-1.5 block text-xs text-gray-500">Spend/mo ($)</label>
@@ -236,7 +237,6 @@ export default function AuditForm() {
                 </div>
               ))}
 
-              {/* Add tool button */}
               <button
                 type="button"
                 onClick={addRow}
@@ -245,7 +245,6 @@ export default function AuditForm() {
                 + Add another tool
               </button>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={isLoading}
