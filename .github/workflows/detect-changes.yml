@@ -1,0 +1,16 @@
+name: Detect pricing changes
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 9 AM UTC daily
+  workflow_dispatch: # manual trigger from GitHub UI
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call detect-changes endpoint
+        run: |
+          curl -X POST \
+            "${{ secrets.APP_URL }}/api/detect-changes?secret=${{ secrets.CRON_SECRET }}" \
+            -f

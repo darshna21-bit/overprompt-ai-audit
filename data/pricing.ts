@@ -27,10 +27,10 @@ export const pricingData: Record<string, ToolPricing> = {
   Claude: {
     plans: [
       { name: "Free",          price: 0,   perSeat: false },
-      { name: "Pro",           price: 20,  perSeat: false }, // $17/month if billed annually
+      { name: "Pro",           price: 40,  perSeat: false }, // $17/month if billed annually
       { name: "Max 5x",        price: 100, perSeat: false },
       { name: "Max 20x",       price: 200, perSeat: false },
-      { name: "Team",          price: 25,  perSeat: true  }, // Standard; $25/seat/month verified May 2026
+      { name: "Team",          price: 200,  perSeat: true  }, // Standard; $25/seat/month verified May 2026
       { name: "Team Premium",  price: 125, perSeat: true  },
       { name: "Enterprise",    price: 60,  perSeat: true  }, // custom; conservative estimate
       { name: "API Direct",    price: 0,   perSeat: false }, // usage-based

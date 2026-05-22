@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 type Props = {
@@ -9,7 +9,7 @@ type Props = {
   plan: string;
   monthlySavings: number;
   annualSavings: number;
-  auditId: string; // passed from AuditForm after Firestore save
+  auditId: string;
 };
 
 export default function LeadCaptureForm({
@@ -19,10 +19,10 @@ export default function LeadCaptureForm({
   annualSavings,
   auditId,
 }: Props) {
-  const [email, setEmail]         = useState("");
-  const [company, setCompany]     = useState("");
-  const [role, setRole]           = useState("");
-  const [honeypot, setHoneypot]   = useState(""); // abuse protection
+  const [email, setEmail]       = useState("");
+  const [company, setCompany]   = useState("");
+  const [role, setRole]         = useState("");
+  const [honeypot, setHoneypot] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess]           = useState(false);
@@ -34,7 +34,6 @@ export default function LeadCaptureForm({
     e.preventDefault();
     setError("");
 
-    // Honeypot — bots fill this, humans don't
     if (honeypot) return;
 
     if (!email) {
@@ -45,22 +44,27 @@ export default function LeadCaptureForm({
     try {
       setIsSubmitting(true);
 
-      // Save lead to its own collection (audit already saved in AuditForm)
       await addDoc(collection(db, "leads"), {
         email,
-        company:     company || null,
-        role:        role || null,
+        company:       company || null,
+        role:          role || null,
         tool,
         plan,
         monthlySavings,
         annualSavings,
-        auditId:     auditId || null, // link back to the audit document
+        auditId:       auditId || null,
         highSavings,
-        createdAt:   new Date(),
-        source:      "audit-form",
+        createdAt:     new Date(),
+        source:        "audit-form",
       });
 
-      // Send confirmation email
+      // Round 2: write userEmail back to the audit doc so detect-changes can email this user
+      if (auditId) {
+        await updateDoc(doc(db, "audits", auditId), {
+          userEmail: email,
+        });
+      }
+
       await fetch("/api/send-confirmation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,7 +133,6 @@ export default function LeadCaptureForm({
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* Honeypot — hidden from users, visible to bots */}
         <input
           type="text"
           name="website"
