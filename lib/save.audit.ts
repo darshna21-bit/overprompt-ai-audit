@@ -1,10 +1,6 @@
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import {
-  AuditReport,
-  AuditInput,
-  generateAudit,
-} from "@/lib/audit-engine";
+import { AuditReport, AuditInput, PLAN_PRICES } from "@/lib/audit-engine";
 
 export async function saveAuditToFirestore(
   inputs: AuditInput[],
@@ -22,7 +18,7 @@ export async function saveAuditToFirestore(
     pricingSnapshot: Object.fromEntries(
       inputs.map((inp) => [
         inp.tool,
-        generateAudit(inp).recommendedMonthlyCost,
+        PLAN_PRICES[inp.tool]?.[inp.plan] ?? 0,  // ← current plan's canonical price
       ])
     ),
 

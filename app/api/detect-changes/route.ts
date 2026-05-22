@@ -253,5 +253,16 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
+  const authHeader = req.headers.get("authorization");
+  const url = new URL(req.url);
+  const secret = url.searchParams.get("secret");
+
+  const isLocalValid = secret === process.env.CRON_SECRET;
+  const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!isLocalValid && !isVercelCron) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   return handleRequest(req);
 }
