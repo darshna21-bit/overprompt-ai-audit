@@ -80,7 +80,7 @@ export const PLAN_PRICES: Record<string, Record<string, number>> = {
     "Pro":        35,  // $16/mo if annual
     "Pro+":       60,
     "Ultra":      250,
-    "Teams":      40,  // $32/seat if annual
+    "Teams":      55,  // $32/seat if annual
     "Enterprise": 60,  // estimated
   },
   "GitHub Copilot": {
