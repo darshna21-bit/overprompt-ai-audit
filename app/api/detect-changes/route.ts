@@ -1,49 +1,39 @@
 // app/api/detect-changes/route.ts
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { pricingData } from "@/data/pricing";
-import { generateAudit, AuditInput } from "@/lib/audit-engine";
+import { generateAudit, AuditInput, PLAN_PRICES } from "@/lib/audit-engine";
 import nodemailer from "nodemailer";
 
 export const runtime = "nodejs";
 
-// Returns a stable hash of what the audit engine would recommend today
+// Stores the current plan's canonical price per seat — NOT the recommended cost.
+// When a vendor changes their price, old !== new → email fires.
 function getPricingSnapshot(inputs: AuditInput[]): Record<string, number> {
   const snapshot: Record<string, number> = {};
   for (const input of inputs) {
-    const result = generateAudit(input);
-    snapshot[input.tool] = result.recommendedMonthlyCost;
+    const price = PLAN_PRICES[input.tool]?.[input.plan] ?? 0;
+    snapshot[input.tool] = price;
   }
   return snapshot;
 }
 
-function hasChanged(
-  oldSnapshot: Record<string, number>,
-  newSnapshot: Record<string, number>
-): boolean {
-  for (const tool of Object.keys(newSnapshot)) {
-    if (oldSnapshot[tool] !== newSnapshot[tool]) return true;
-  }
-  return false;
-}
+type SnapshotMap = Record<string, number>;
 
-function buildEmailHtml(
+function getChangedTools(
+  oldSnapshot: SnapshotMap,
+  newSnapshot: SnapshotMap,
   oldResults: any[],
-  newResults: any[],
-  reauditUrl: string
-): string {
-
-  const changedTools = newResults
+  newResults: any[]
+): any[] {
+  return newResults
     .map((nr) => {
       const or = oldResults.find((r) => r.tool === nr.tool);
-
       if (!or) return null;
 
-      // detect ANY meaningful pricing/recommendation change
       const changed =
-        or.recommendedMonthlyCost !== nr.recommendedMonthlyCost ||
-        or.recommendedPlan !== nr.recommendedPlan ||
-        or.monthlySavings !== nr.monthlySavings;
+        (oldSnapshot[nr.tool] ?? 0) !== (newSnapshot[nr.tool] ?? 0) || // price moved
+        or.recommendedPlan !== nr.recommendedPlan ||                    // plan changed
+        or.monthlySavings !== nr.monthlySavings;                        // savings changed
 
       if (!changed) return null;
 
@@ -58,17 +48,16 @@ function buildEmailHtml(
       };
     })
     .filter(Boolean);
+}
 
-  const oldTotal = oldResults.reduce(
-    (s, r) => s + (r.monthlySavings || 0),
-    0
-  );
-
-  const newTotal = newResults.reduce(
-    (s, r) => s + (r.monthlySavings || 0),
-    0
-  );
-
+function buildEmailHtml(
+  changedTools: any[],
+  oldResults: any[],
+  newResults: any[],
+  reauditUrl: string
+): string {
+  const oldTotal = oldResults.reduce((s, r) => s + (r.monthlySavings || 0), 0);
+  const newTotal = newResults.reduce((s, r) => s + (r.monthlySavings || 0), 0);
   const delta = newTotal - oldTotal;
 
   const rows = changedTools
@@ -78,21 +67,13 @@ function buildEmailHtml(
           <td style="padding:10px;border-bottom:1px solid #eee;font-weight:600">
             ${c.tool}
           </td>
-
           <td style="padding:10px;border-bottom:1px solid #eee;color:#666">
-            ${c.oldPlan}
-            <br/>
-            <span style="font-size:13px">
-              $${c.oldPrice}/mo
-            </span>
+            ${c.oldPlan}<br/>
+            <span style="font-size:13px">$${c.oldSavings}/mo saved</span>
           </td>
-
           <td style="padding:10px;border-bottom:1px solid #eee;color:#e53e3e">
-            ${c.newPlan}
-            <br/>
-            <span style="font-size:13px">
-              $${c.newPrice}/mo
-            </span>
+            ${c.newPlan}<br/>
+            <span style="font-size:13px">$${c.newSavings}/mo saved</span>
           </td>
         </tr>
       `
@@ -101,103 +82,47 @@ function buildEmailHtml(
 
   return `
     <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;padding:20px">
-
       <h2 style="color:#111;font-size:28px;margin-bottom:12px">
         Your AI audit is out of date
       </h2>
-
       <p style="font-size:16px;line-height:1.6;color:#444">
-        Pricing changed for
-        <strong>${changedTools.length}</strong>
-        tool${changedTools.length !== 1 ? "s" : ""}
-        since your last audit.
+        Pricing changed for <strong>${changedTools.length}</strong>
+        tool${changedTools.length !== 1 ? "s" : ""} since your last audit.
       </p>
-
-      <h3 style="margin-top:32px;color:#111">
-        What changed
-      </h3>
-
-      <table
-        style="
-          width:100%;
-          border-collapse:collapse;
-          margin-top:12px;
-          border:1px solid #eee;
-        "
-      >
+      <h3 style="margin-top:32px;color:#111">What changed</h3>
+      <table style="width:100%;border-collapse:collapse;margin-top:12px;border:1px solid #eee;">
         <thead>
           <tr style="background:#f7f7f7">
-            <th style="padding:12px;text-align:left">
-              Tool
-            </th>
-
-            <th style="padding:12px;text-align:left">
-              Old recommendation
-            </th>
-
-            <th style="padding:12px;text-align:left">
-              New recommendation
-            </th>
+            <th style="padding:12px;text-align:left">Tool</th>
+            <th style="padding:12px;text-align:left">Previous savings</th>
+            <th style="padding:12px;text-align:left">New savings</th>
           </tr>
         </thead>
-
-        <tbody>
-          ${rows}
-        </tbody>
+        <tbody>${rows}</tbody>
       </table>
-
-      <div
-        style="
-          margin-top:24px;
-          padding:16px;
-          background:#fafafa;
-          border-radius:8px;
-        "
-      >
+      <div style="margin-top:24px;padding:16px;background:#fafafa;border-radius:8px;">
         <strong style="font-size:18px">
-          Savings delta:
-          ${delta >= 0 ? "+" : ""}$${delta}/mo
+          Savings delta: ${delta >= 0 ? "+" : ""}$${delta}/mo
         </strong>
       </div>
-
       <a
         href="${reauditUrl}"
-        style="
-          display:inline-block;
-          margin-top:28px;
-          padding:14px 24px;
-          background:#000;
-          color:#fff;
-          text-decoration:none;
-          border-radius:8px;
-          font-weight:600;
-        "
+        style="display:inline-block;margin-top:28px;padding:14px 24px;background:#000;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;"
       >
-        Re-run audit with new pricing →
+        See what changed →
       </a>
-
       <p style="margin-top:40px;font-size:12px;color:#888">
-        <a
-          href="${reauditUrl}?unsubscribe=1"
-          style="color:#888"
-        >
+        <a href="${reauditUrl}?unsubscribe=1" style="color:#888">
           Unsubscribe from re-audit emails
         </a>
       </p>
-
     </div>
   `;
 }
 
-export async function POST(req: Request) {
-  // Simple auth — prevent public abuse
-  const { searchParams } = new URL(req.url);
-  const secret = searchParams.get("secret");
-  if (secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+async function handleRequest(req: Request) {
 
-    const snapshot = await adminDb.collection("audits").get();
+  const snapshot = await adminDb.collection("audits").get();
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -207,74 +132,126 @@ export async function POST(req: Request) {
     },
   });
 
-  // Group by email to avoid spamming (1 email per user max)
+  // Group by email — 1 email per user max
   const byEmail: Record<string, { doc: any; id: string }[]> = {};
   snapshot.forEach((doc) => {
     const data = doc.data();
-
     const email = data.userEmail || data.email;
-
-    console.log("DOC DATA:", data);
-    console.log("EMAIL FOUND:", email);
-
     if (email) {
-        if (!byEmail[email]) byEmail[email] = [];
-
-        byEmail[email].push({
-        doc: data,
-        id: doc.id,
-        });
+      if (!byEmail[email]) byEmail[email] = [];
+      byEmail[email].push({ doc: data, id: doc.id });
     }
-    });
+  });
 
   let emailsSent = 0;
   let auditsChecked = 0;
+  const errors: string[] = [];
 
   for (const [email, entries] of Object.entries(byEmail)) {
-    // Use the most recent audit for this email
+    // Use most recent audit for this email
     const latest = entries.sort(
-      (a, b) => (b.doc.createdAt?.seconds ?? 0) - (a.doc.createdAt?.seconds ?? 0)
+      (a, b) =>
+        (b.doc.createdAt?.seconds ?? 0) - (a.doc.createdAt?.seconds ?? 0)
     )[0];
 
     const { doc: auditDoc, id: auditId } = latest;
     auditsChecked++;
 
-    if (!auditDoc.inputs || !auditDoc.results) continue;
-
-    const newSnapshot = getPricingSnapshot(auditDoc.inputs);
-    const oldSnapshot = auditDoc.pricingSnapshot ?? {};
-
-    console.log("OLD SNAPSHOT:", oldSnapshot);
-    console.log("NEW SNAPSHOT:", newSnapshot);
-
-    const forcePricingChange =
-        process.env.NODE_ENV === "development";
-
-    if (!forcePricingChange && !hasChanged(oldSnapshot, newSnapshot)) {
-    continue;
+    if (!auditDoc.inputs || !auditDoc.results) {
+      console.warn(`Skipping audit ${auditId}: missing inputs or results`);
+      continue;
     }
 
-    // Generate fresh results
-    const newResults = auditDoc.inputs.map((inp: AuditInput) => generateAudit(inp));
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://overprompt-ai-audit.vercel.app";
-    const reauditUrl = `${appUrl}/audit/${auditId}?reaudit=1`;
+    // New snapshot uses canonical plan price (not recommended cost)
+    const newSnapshot = getPricingSnapshot(auditDoc.inputs);
+    const oldSnapshot: SnapshotMap = auditDoc.pricingSnapshot ?? {};
 
-    const html = buildEmailHtml(auditDoc.results, newResults, reauditUrl);
+    // Fresh results with today's pricing
+    const newResults = auditDoc.inputs.map((inp: AuditInput) =>
+      generateAudit(inp)
+    );
 
-    await transporter.sendMail({
-      from: `"Overprompt" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: "Your AI audit needs a refresh — pricing changed",
-      html,
-    });
+    const changedTools = getChangedTools(
+      oldSnapshot,
+      newSnapshot,
+      auditDoc.results,
+      newResults
+    );
 
-    emailsSent++;
+    console.log(`[${auditId}] changed tools:`, changedTools.length);
+
+    // ✅ Skip early if nothing changed — do NOT update snapshot yet
+    if (changedTools.length === 0) {
+      console.log(`[${auditId}] No changes — skipping email for ${email}`);
+      continue;
+    }
+
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      "https://overprompt-ai-audit.vercel.app";
+
+    // Points to diff page — shows old vs new side by side
+    const reauditUrl = `${appUrl}/audit/${auditId}/diff`;
+
+    const html = buildEmailHtml(
+      changedTools,
+      auditDoc.results,
+      newResults,
+      reauditUrl
+    );
+
+    try {
+      await transporter.sendMail({
+        from: `"Overprompt" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: "Your AI audit needs a refresh — pricing changed",
+        html,
+      });
+      emailsSent++;
+      console.log(`[${auditId}] Email sent to ${email}`);
+
+      // ✅ Update snapshot ONLY after email sent successfully
+      // Next run will use new prices as baseline — no duplicate emails
+      await adminDb.collection("audits").doc(auditId).update({
+        pricingSnapshot: newSnapshot,
+        lastCheckedAt: new Date(),
+      });
+    } catch (err: any) {
+      console.error(`Failed to send email to ${email}:`, err.message);
+      errors.push(`${email}: ${err.message}`);
+      // ✅ Do NOT update snapshot if email failed — will retry next run
+    }
   }
 
-  return NextResponse.json({ auditsChecked, emailsSent });
+  return NextResponse.json({
+    auditsChecked,
+    emailsSent,
+    ...(errors.length ? { errors } : {}),
+  });
 }
 
-// Also support GET for manual browser trigger during testing
+export async function POST(req: Request) {
+  const authHeader = req.headers.get("authorization");
+
+  const url = new URL(req.url);
+  const secret = url.searchParams.get("secret");
+
+  const isLocalValid =
+    secret === process.env.CRON_SECRET;
+
+  const isVercelCron =
+    authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  if (!isLocalValid && !isVercelCron) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  return handleRequest(req);
+}
+
 export async function GET(req: Request) {
-  return POST(req);
+  return handleRequest(req);
 }

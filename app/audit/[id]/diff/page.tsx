@@ -68,7 +68,13 @@ export default function DiffPage() {
         <div className="space-y-4">
           {newResults.map((nr) => {
             const or = oldResults.find((r) => r.tool === nr.tool);
-            const changed = or && or.recommendedMonthlyCost !== nr.recommendedMonthlyCost;
+
+            // Check all three dimensions — plan, cost, savings
+            const changed = or && (
+              or.recommendedMonthlyCost !== nr.recommendedMonthlyCost ||
+              or.recommendedPlan !== nr.recommendedPlan ||
+              or.monthlySavings !== nr.monthlySavings
+            );
 
             return (
               <div
@@ -89,17 +95,27 @@ export default function DiffPage() {
 
                 {changed && or ? (
                   <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* Previous */}
                     <div className="bg-white/5 border border-white/10 rounded-lg p-3">
                       <div className="text-gray-500 text-xs mb-1">Previous</div>
                       <div className="font-medium text-white">{or.recommendedPlan}</div>
                       <div className="text-gray-400">${or.recommendedMonthlyCost}/mo</div>
                       <div className="text-green-400 mt-1">Saved ${or.monthlySavings}/mo</div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-                      <div className="text-gray-500 text-xs mb-1">Now</div>
+                    {/* Now */}
+                    <div className="bg-white/5 border border-orange-500/20 rounded-lg p-3">
+                      <div className="text-orange-400 text-xs mb-1">Now</div>
                       <div className="font-medium text-white">{nr.recommendedPlan}</div>
                       <div className="text-gray-400">${nr.recommendedMonthlyCost}/mo</div>
-                      <div className="text-green-400 mt-1">Saves ${nr.monthlySavings}/mo</div>
+                      <div className={`mt-1 ${nr.monthlySavings >= or.monthlySavings ? "text-green-400" : "text-red-400"}`}>
+                        Saves ${nr.monthlySavings}/mo
+                        {nr.monthlySavings !== or.monthlySavings && (
+                          <span className="ml-1 text-xs">
+                            ({nr.monthlySavings > or.monthlySavings ? "+" : ""}
+                            {nr.monthlySavings - or.monthlySavings}/mo)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -110,8 +126,9 @@ export default function DiffPage() {
           })}
         </div>
 
+        {/* Link to full updated audit */}
         <div className="mt-8 text-center">
-          
+          <a
             href={`/audit/${id}`}
             className="inline-block bg-white text-black px-6 py-3 rounded-xl font-medium hover:opacity-90 transition"
           >
