@@ -150,7 +150,14 @@ function isAuthorized(req: Request): boolean {
 }
 
 async function handleRequest() {
-  const snapshot = await adminDb.collection("audits").get();
+  if (!adminDb) {
+  return Response.json(
+    { error: "Firebase admin not initialized" },
+    { status: 500 }
+  );
+}
+
+const snapshot = await adminDb!.collection("pricingAudits").get();
 
   const transporter = nodemailer.createTransport({
     service: "gmail",
