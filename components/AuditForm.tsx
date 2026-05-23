@@ -94,8 +94,9 @@ export default function AuditForm() {
     const result = generateAuditReport(rows);
     setReport(result);
 
+    // WITH THIS:
     try {
-      const id = await saveAuditToFirestore(rows, result);
+      const id = await saveAuditToFirestore(rows, result, undefined); // email added later by LeadCaptureForm
       setAuditId(id);
     } catch (err) {
       console.error("[AuditForm] Failed to save audit:", err);
