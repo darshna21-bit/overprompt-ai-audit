@@ -1,15 +1,36 @@
 // app/api/detect-changes/route.ts
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { generateAudit, AuditInput, PLAN_PRICES } from "@/lib/audit-engine";
+import { generateAudit, AuditInput, AuditResult, PLAN_PRICES } from "@/lib/audit-engine";
 import nodemailer from "nodemailer";
 
 export const runtime = "nodejs";
 
+type SnapshotMap = Record<string, number>;
+
+type ChangedTool = {
+  tool: string;
+  oldPrice: number;
+  newPrice: number;
+  oldPlan: string;
+  newPlan: string;
+  oldSavings: number;
+  newSavings: number;
+};
+
+type StoredAuditDoc = {
+  inputs: AuditInput[];
+  results: AuditResult[];
+  pricingSnapshot?: SnapshotMap;
+  userEmail?: string;
+  email?: string;
+  createdAt?: { seconds: number };
+};
+
 // Stores the current plan's canonical price per seat — NOT the recommended cost.
 // When a vendor changes their price, old !== new → email fires.
-function getPricingSnapshot(inputs: AuditInput[]): Record<string, number> {
-  const snapshot: Record<string, number> = {};
+function getPricingSnapshot(inputs: AuditInput[]): SnapshotMap {
+  const snapshot: SnapshotMap = {};
   for (const input of inputs) {
     const price = PLAN_PRICES[input.tool]?.[input.plan] ?? 0;
     snapshot[input.tool] = price;
@@ -17,16 +38,14 @@ function getPricingSnapshot(inputs: AuditInput[]): Record<string, number> {
   return snapshot;
 }
 
-type SnapshotMap = Record<string, number>;
-
 function getChangedTools(
   oldSnapshot: SnapshotMap,
   newSnapshot: SnapshotMap,
-  oldResults: any[],
-  newResults: any[]
-): any[] {
+  oldResults: AuditResult[],
+  newResults: AuditResult[]
+): ChangedTool[] {
   return newResults
-    .map((nr) => {
+    .map((nr): ChangedTool | null => {
       const or = oldResults.find((r) => r.tool === nr.tool);
       if (!or) return null;
 
@@ -47,13 +66,13 @@ function getChangedTools(
         newSavings: nr.monthlySavings,
       };
     })
-    .filter(Boolean);
+    .filter((x): x is ChangedTool => x !== null);
 }
 
 function buildEmailHtml(
-  changedTools: any[],
-  oldResults: any[],
-  newResults: any[],
+  changedTools: ChangedTool[],
+  oldResults: AuditResult[],
+  newResults: AuditResult[],
   reauditUrl: string
 ): string {
   const oldTotal = oldResults.reduce((s, r) => s + (r.monthlySavings || 0), 0);
@@ -62,7 +81,7 @@ function buildEmailHtml(
 
   const rows = changedTools
     .map(
-      (c: any) => `
+      (c) => `
         <tr>
           <td style="padding:10px;border-bottom:1px solid #eee;font-weight:600">
             ${c.tool}
@@ -120,8 +139,17 @@ function buildEmailHtml(
   `;
 }
 
-async function handleRequest(req: Request) {
+function isAuthorized(req: Request): boolean {
+  const authHeader = req.headers.get("authorization");
+  const url = new URL(req.url);
+  const secret = url.searchParams.get("secret");
+  return (
+    secret === process.env.CRON_SECRET ||
+    authHeader === `Bearer ${process.env.CRON_SECRET}`
+  );
+}
 
+async function handleRequest() {
   const snapshot = await adminDb.collection("audits").get();
 
   const transporter = nodemailer.createTransport({
@@ -133,13 +161,13 @@ async function handleRequest(req: Request) {
   });
 
   // Group by email — 1 email per user max
-  const byEmail: Record<string, { doc: any; id: string }[]> = {};
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    const email = data.userEmail || data.email;
+  const byEmail: Record<string, { doc: StoredAuditDoc; id: string }[]> = {};
+  snapshot.forEach((docSnap) => {
+    const data = docSnap.data() as StoredAuditDoc;
+    const email = data.userEmail ?? data.email;
     if (email) {
       if (!byEmail[email]) byEmail[email] = [];
-      byEmail[email].push({ doc: data, id: doc.id });
+      byEmail[email].push({ doc: data, id: docSnap.id });
     }
   });
 
@@ -167,7 +195,7 @@ async function handleRequest(req: Request) {
     const oldSnapshot: SnapshotMap = auditDoc.pricingSnapshot ?? {};
 
     // Fresh results with today's pricing
-    const newResults = auditDoc.inputs.map((inp: AuditInput) =>
+    const newResults: AuditResult[] = auditDoc.inputs.map((inp) =>
       generateAudit(inp)
     );
 
@@ -216,9 +244,10 @@ async function handleRequest(req: Request) {
         pricingSnapshot: newSnapshot,
         lastCheckedAt: new Date(),
       });
-    } catch (err: any) {
-      console.error(`Failed to send email to ${email}:`, err.message);
-      errors.push(`${email}: ${err.message}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`Failed to send email to ${email}:`, message);
+      errors.push(`${email}: ${message}`);
       // ✅ Do NOT update snapshot if email failed — will retry next run
     }
   }
@@ -231,38 +260,15 @@ async function handleRequest(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const authHeader = req.headers.get("authorization");
-
-  const url = new URL(req.url);
-  const secret = url.searchParams.get("secret");
-
-  const isLocalValid =
-    secret === process.env.CRON_SECRET;
-
-  const isVercelCron =
-    authHeader === `Bearer ${process.env.CRON_SECRET}`;
-
-  if (!isLocalValid && !isVercelCron) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  return handleRequest(req);
+  return handleRequest();
 }
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const url = new URL(req.url);
-  const secret = url.searchParams.get("secret");
-
-  const isLocalValid = secret === process.env.CRON_SECRET;
-  const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-
-  if (!isLocalValid && !isVercelCron) {
+  if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  return handleRequest(req);
+  return handleRequest();
 }
